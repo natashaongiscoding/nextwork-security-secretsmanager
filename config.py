@@ -1,3 +1,35 @@
-AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
-AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-AWS_REGION = "us-east-2"
+import boto3
+import json
+from botocore.exceptions import ClientError
+
+def get_secret():
+
+    secret_name = "aws-access-key"
+    region_name = "us-east-2" # Replace with your AWS region if different
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a complete list of exceptions, see https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    # Decrypts secret using the associated KMS key.
+    secret = get_secret_value_response['SecretString']
+    return json.loads(secret)
+
+# Retrieve credentials from Secrets Manager
+credentials = get_secret()
+
+# Extract the values; if AWS_REGION isn't in the secret, use the region from the session
+AWS_ACCESS_KEY_ID = credentials.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = credentials.get("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = credentials.get("AWS_REGION", boto3.session.Session().region_name or "us-east-2")
